@@ -11,7 +11,7 @@ public class SteeringBehavior : MonoBehaviour
 
     private int currentPathIndex = 0;
     private float arriveThreshold = 3f;
-    private float maxSpeed = 10f;
+    private float maxSpeed = 5f;
     private float minSpeed = 2f;
     private float turnSensitivity = 5f;
 
@@ -70,34 +70,33 @@ float GetSignedAngle(Vector3 from, Vector3 to)
 
 
     void FollowPath()
+{
+    if (currentPathIndex >= path.Count)
     {
-        if (currentPathIndex >= path.Count)
-        {
-            path = null;
-            return;
-        }
-
-        Vector3 waypoint = path[currentPathIndex];
-        Vector3 direction = waypoint - transform.position;
-        direction.y = 0;
-        float distance = direction.magnitude;
-
-        // Go to next waypoint if close enough
-        if (distance < arriveThreshold)
-        {
-            currentPathIndex++;
-            return;
-        }
-
-        direction.Normalize();
-
-        // Adjust speed based on angle to next waypoint
-        float angle = Quaternion.Angle(transform.rotation, Quaternion.LookRotation(direction));
-        float speed = Mathf.Lerp(maxSpeed, minSpeed, angle / 90f); // slower on sharper turns
-
-        kinematic.SetDesiredSpeed(speed);
-        kinematic.SetDesiredRotationalVelocity(Quaternion.LookRotation(direction).eulerAngles.y);
+        path = null;
+        return;
     }
+
+    Vector3 waypoint = path[currentPathIndex];
+    Vector3 direction = waypoint - transform.position;
+    direction.y = 0;
+    float distance = direction.magnitude;
+
+    if (distance < arriveThreshold)
+    {
+        currentPathIndex++;
+        return;
+    }
+
+    direction.Normalize();
+    float angle = Quaternion.Angle(transform.rotation, Quaternion.LookRotation(direction));
+    float speed = Mathf.Lerp(maxSpeed, minSpeed, angle / 90f);
+    kinematic.SetDesiredSpeed(speed);
+
+    float turnAmount = GetSignedAngle(transform.forward, direction);
+    kinematic.SetDesiredRotationalVelocity(turnAmount * turnSensitivity);
+}
+
 
     public void SetTarget(Vector3 target)
     {
