@@ -13,7 +13,7 @@ public class SteeringBehavior : MonoBehaviour
     private float arriveThreshold = 3f;
     private float maxSpeed = 10f;
     private float minSpeed = 2f;
-    //private float turnSensitivity = 5f;
+    private float turnSensitivity = 5f;
 
     void Start()
     {
@@ -42,6 +42,11 @@ public class SteeringBehavior : MonoBehaviour
             label.text = $"Dist: {distance:F2}";
     }
 
+float GetSignedAngle(Vector3 from, Vector3 to)
+{
+    float angle = Vector3.SignedAngle(from, to, Vector3.up); // Y axis for 2D turning
+    return angle;
+}
     void SeekSingleTarget()
 {
     Vector3 direction = target - transform.position;
