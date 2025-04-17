@@ -10,7 +10,7 @@ public class SteeringBehavior : MonoBehaviour
     public TextMeshProUGUI label;
 
     private int currentPathIndex = 0;
-    private float arriveThreshold = 0.5f;
+    private float arriveThreshold = 1f;
     private float maxSpeed = 5f;
     private float minSpeed = 2f;
     private float turnSensitivity = 5f;
