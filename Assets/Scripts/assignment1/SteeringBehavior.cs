@@ -11,9 +11,9 @@ public class SteeringBehavior : MonoBehaviour
 
     private int currentPathIndex = 0;
     private float arriveThreshold = 3f;
-    private float maxSpeed = 5f;
+    private float maxSpeed = 10f;
     private float minSpeed = 2f;
-    private float turnSensitivity = 5f;
+    //private float turnSensitivity = 5f;
 
     void Start()
     {
@@ -43,22 +43,26 @@ public class SteeringBehavior : MonoBehaviour
     }
 
     void SeekSingleTarget()
+{
+    Vector3 direction = target - transform.position;
+    direction.y = 0;
+    float distance = direction.magnitude;
+
+    if (distance < arriveThreshold)
     {
-        Vector3 direction = target - transform.position;
-        direction.y = 0; // Ignore vertical difference
-        float distance = direction.magnitude;
-
-        if (distance < arriveThreshold)
-        {
-            kinematic.SetDesiredSpeed(0);
-            return;
-        }
-
-        direction.Normalize();
-        float desiredSpeed = Mathf.Lerp(minSpeed, maxSpeed, distance / 10f); // Smooth acceleration
-        kinematic.SetDesiredSpeed(desiredSpeed);
-        kinematic.SetDesiredRotationalVelocity(Quaternion.LookRotation(direction).eulerAngles.y);
+        kinematic.SetDesiredSpeed(0);
+        kinematic.SetDesiredRotationalVelocity(0);
+        return;
     }
+
+    direction.Normalize();
+    float desiredSpeed = Mathf.Lerp(minSpeed, maxSpeed, distance / 10f);
+    kinematic.SetDesiredSpeed(desiredSpeed);
+
+    float turnAmount = GetSignedAngle(transform.forward, direction);
+    kinematic.SetDesiredRotationalVelocity(turnAmount * turnSensitivity);
+}
+
 
     void FollowPath()
     {
