@@ -129,7 +129,8 @@ public class SteeringBehavior : MonoBehaviour
     {
         if (PathDone())
         {
-            path = null;
+            // Reached final waypoint, now seek target
+            SeekTarget();
             return;
         }
 
