@@ -1,6 +1,10 @@
 using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
+using System;
+using UnityEditor.ShaderGraph.Internal;
+using System.Net.Security;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 public class SteeringBehavior : MonoBehaviour
 {
@@ -10,10 +14,10 @@ public class SteeringBehavior : MonoBehaviour
     public TextMeshProUGUI label;
 
     private int currentPathIndex = 0;
-    private float arriveThreshold = 3f;
-    private float maxSpeed = 5f;
-    private float minSpeed = 2f;
-    private float turnSensitivity = 5f;
+    private float arriveThreshold = 10f;
+    private float maxSpeed = 20f;
+    private float minSpeed = 4f;
+    private float facingTargetThreshold = 10f;
 
     void Start()
     {
@@ -25,77 +29,149 @@ public class SteeringBehavior : MonoBehaviour
 
     void Update()
     {
-        if (path != null && path.Count > 0)
+        bool pathMode = path != null && path.Count > 0;
+        if (path != null)
         {
+            Debug.Log($"path: {path}");
+        } else Debug.Log("path null");
+        if (pathMode)
+        {
+            Console.WriteLine("pathMode detected, calling FollowPath()");
             FollowPath();
         }
         else
         {
-            SeekSingleTarget();
+            Console.WriteLine("calling SeekTarget()");
+            SeekTarget();
+        }
+    }
+    
+    int GetSign(float n)
+    {
+        if (n < 0)
+        {
+            return -1;
+        }
+        else
+        {
+            return 1;
+        }
+    }
+
+    bool SharpTurn(float angle)
+    {
+        angle = Mathf.Abs(angle);
+        if (angle > 45f) {
+            return true;
+        }
+        return false;
+    }
+    void SeekTarget()
+    {
+        Vector3 direction = target - transform.position;
+        direction.y = 0;
+        float distance = direction.magnitude;
+
+        if (distance < arriveThreshold)
+        {
+            kinematic.SetDesiredSpeed(0);
+            kinematic.SetDesiredRotationalVelocity(0);
+            return;
         }
 
-        // Show debug label (distance to next point/target)
-        float distance = (path != null && path.Count > 0)
-            ? Vector3.Distance(transform.position, path[currentPathIndex])
-            : Vector3.Distance(transform.position, target);
-        if (label != null)
-            label.text = $"Dist: {distance:F2}";
+        direction.Normalize();
+        float targetAngle = Vector3.SignedAngle(transform.forward, direction, Vector3.up);
+        // Debug.Log($"target angle: {targetAngle}");
+        float speed;
+        if (SharpTurn(targetAngle) && distance < 25f)
+        {
+            speed = minSpeed;
+        }
+        else
+        {
+            speed = Mathf.Lerp(minSpeed, maxSpeed, distance / 10f);
+        }
+        kinematic.SetDesiredSpeed(speed);
+
+        float speedRotational = Mathf.Lerp(minSpeed, maxSpeed, targetAngle / 90f);;
+        if (!FacingTarget(targetAngle))
+        {
+            if (SharpTurn(targetAngle))
+            {
+                speedRotational *= 10f;
+            }
+            else
+            {
+                speedRotational *= 3f;
+        }
+        kinematic.SetDesiredRotationalVelocity(speedRotational * GetSign(targetAngle));
+        }
     }
 
-float GetSignedAngle(Vector3 from, Vector3 to)
-{
-    float angle = Vector3.SignedAngle(from, to, Vector3.up); // Y axis for 2D turning
-    return angle;
-}
-    void SeekSingleTarget()
-{
-    Vector3 direction = target - transform.position;
-    direction.y = 0;
-    float distance = direction.magnitude;
-
-    if (distance < arriveThreshold)
+    bool PathDone()
     {
-        kinematic.SetDesiredSpeed(0);
-        kinematic.SetDesiredRotationalVelocity(0);
-        return;
+        if (currentPathIndex == path.Count - 1)
+        {
+            return true;
+        }
+        return false;
     }
 
-    direction.Normalize();
-    float desiredSpeed = Mathf.Lerp(minSpeed, maxSpeed, distance / 10f);
-    kinematic.SetDesiredSpeed(desiredSpeed);
-
-    float turnAmount = GetSignedAngle(transform.forward, direction);
-    kinematic.SetDesiredRotationalVelocity(turnAmount * turnSensitivity);
-}
-
+    bool FacingTarget(float angle)
+    {
+        if (Mathf.Abs(angle) <= facingTargetThreshold) {
+            return true;
+        }
+        return false;
+    }   
 
     void FollowPath()
-{
-    if (currentPathIndex >= path.Count)
     {
-        path = null;
-        return;
+        if (PathDone())
+        {
+            path = null;
+            return;
+        }
+
+        Vector3 waypoint = path[currentPathIndex];
+        Vector3 direction = waypoint - transform.position;
+        direction.y = 0;
+        float distance = direction.magnitude;
+        Console.WriteLine($"cpi: {currentPathIndex}");
+        if (distance < arriveThreshold)
+        {
+            currentPathIndex++;
+            return;
+        }
+
+        direction.Normalize();
+        float targetAngle = Vector3.SignedAngle(transform.forward, direction, Vector3.up);
+        //Debug.Log($"target angle: {targetAngle}");
+        float speed;
+        if (SharpTurn(targetAngle) && distance < 25f)
+        {
+            speed = minSpeed;
+        }
+        else
+        {
+            speed = Mathf.Lerp(minSpeed, maxSpeed, distance / 10f);
+        }
+        kinematic.SetDesiredSpeed(speed);
+
+        float speedRotational = Mathf.Lerp(minSpeed, maxSpeed, targetAngle / 90f);;
+        if (!FacingTarget(targetAngle))
+        {
+            if (SharpTurn(targetAngle))
+            {
+                speedRotational *= 10f;
+            }
+            else
+            {
+                speedRotational *= 3f;
+        }
+        kinematic.SetDesiredRotationalVelocity(speedRotational * GetSign(targetAngle));
+        }
     }
-
-    Vector3 waypoint = path[currentPathIndex];
-    Vector3 direction = waypoint - transform.position;
-    direction.y = 0;
-    float distance = direction.magnitude;
-
-    if (distance < arriveThreshold)
-    {
-        currentPathIndex++;
-        return;
-    }
-
-    direction.Normalize();
-    float angle = Quaternion.Angle(transform.rotation, Quaternion.LookRotation(direction));
-    float speed = Mathf.Lerp(maxSpeed, minSpeed, angle / 90f);
-    kinematic.SetDesiredSpeed(speed);
-
-    float turnAmount = GetSignedAngle(transform.forward, direction);
-    kinematic.SetDesiredRotationalVelocity(turnAmount * turnSensitivity);
-}
 
 
     public void SetTarget(Vector3 target)
