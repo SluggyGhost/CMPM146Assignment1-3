@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections.Generic;
-using System.Linq;
 
 public class PathFinder : MonoBehaviour
 {
@@ -15,101 +14,14 @@ public class PathFinder : MonoBehaviour
     // efficient
     //
     // Take a look at StandaloneTests.cs for some test cases
-    private class Frontier {
-        private List<(GraphNode node, float priority)> elements = new();
-
-        public int Count => elements.Count;
-
-        public void Enqueue(GraphNode node, float priority){
-            elements.Add((node, priority));
-        }
-
-        public GraphNode Dequeue() {
-            int bestIndex = 0;
-            for(int i = 1; i < elements.Count; i++){
-                if(elements[i].priority < elements[bestIndex].priority){
-                    bestIndex = i;
-                }
-            }
-            GraphNode bestItem = elements[bestIndex].node;
-            elements.RemoveAt(bestIndex);
-            return bestItem;
-        }
-
-        public bool Contains(GraphNode node){
-            return elements.Any(e => e.node == node);
-        }
-
-        public void UpdatePriority(GraphNode node, float new Priority) {
-            for (int i = 0; i < elements.Count; i++) {
-                if(elements[i].node == node) {
-                    elements[i] = (node, newPriority);
-                    return;
-                }
-            }
-        }
-    }
-    
-    public static (List<Vector3>, int) AStar(GraphNode start, GraphNode destination, Vector3 target){
-        var frontier = new Frontier();
-        var cameFrom = new Dictionary<GraphNode, GraphNode>();
-        var gScore = new Dictionary<GraphNode, float>();
-        var fScore = new Dictionary<GraphNode, float>();
-        var expandedNodes = 0;
-
-        foreach (var node in start.graph.all_nodes)
-        {
-            gScore[node] = float.PositiveInfinity;
-            fScore[node] = float.PositiveInfinity;
-        }
-
-        gScore[start] = 0f;
-        fScore[start] = Heuristic(start, target);
-        frontier.Enqueue(start, fScore[start]);
-
-        while (frontier.Count > 0)
-        {
-            var current = frontier.Dequeue();
-            expandedNodes++;
-
-            if (current == destination)
-                return (ReconstructPath(cameFrom, current, target), expandedNodes);
-
-            foreach (var neighbor in current.neighbors)
-            {
-                float tentativeG = gScore[current] + Vector3.Distance(current.GetPosition(), neighbor.GetPosition());
-
-                if (tentativeG < gScore[neighbor])
-                {
-                    cameFrom[neighbor] = current;
-                    gScore[neighbor] = tentativeG;
-                    fScore[neighbor] = tentativeG + Heuristic(neighbor, target);
-
-                    if (!frontier.Contains(neighbor))
-                        frontier.Enqueue(neighbor, fScore[neighbor]);
-                    else
-                        frontier.UpdatePriority(neighbor, fScore[neighbor]);
-                }
-            }
-        }
-
-        return (new List<Vector3>(), expandedNodes); // No path found
-    }
-
-    private static float Heuristic(GraphNode node, Vector3 target)
+    public static (List<Vector3>, int) AStar(GraphNode start, GraphNode destination, Vector3 target)
     {
-        return Vector3.Distance(node.GetPosition(), target);
-    }
+        // Implement A* here
+        List<Vector3> path = new List<Vector3>() { target };
 
-    private static List<Vector3> ReconstructPath(Dictionary<GraphNode, GraphNode> cameFrom, GraphNode current, Vector3 target)
-    {
-        var path = new List<Vector3> { target };
-        while (cameFrom.ContainsKey(current))
-        {
-            path.Insert(0, current.GetPosition());
-            current = cameFrom[current];
-        }
-        return path;
+        // return path and number of nodes expanded
+        return (path, 0);
+
     }
 
     public Graph graph;
@@ -159,5 +71,11 @@ public class PathFinder : MonoBehaviour
             Debug.Log("found path of length " + path.Count + " expanded " + expanded + " nodes, out of: " + graph.all_nodes.Count);
             EventBus.SetPath(path);
         }
+        
+
     }
+
+    
+
+ 
 }
